@@ -1,6 +1,6 @@
 // Guarda la app en el teléfono para que funcione sin internet.
 // Si cambias index.html, sube el número de versión para forzar la actualización.
-const CACHE = 'cotizador-zapatos-v4';
+const CACHE = 'cotizador-zapatos-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -10,8 +10,11 @@ const ASSETS = [
   './icons/apple-touch-icon.png'
 ];
 
+// cache: 'reload' evita copiar una versión vieja que el navegador tenga guardada
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE).then((cache) =>
+    cache.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' })))
+  ));
   self.skipWaiting();
 });
 
@@ -27,7 +30,8 @@ self.addEventListener('activate', (event) => {
 // y, si no hay conexión o tarda más de 3 segundos, se usa la copia guardada.
 function paginaPrimeroRed(request) {
   return caches.open(CACHE).then((cache) => {
-    const red = fetch(request).then((res) => {
+    // no-cache: siempre pregunta al servidor si hay una versión nueva
+    const red = fetch(request.url, { cache: 'no-cache', credentials: 'same-origin' }).then((res) => {
       if (res && res.ok) cache.put('./index.html', res.clone());
       return res;
     });
