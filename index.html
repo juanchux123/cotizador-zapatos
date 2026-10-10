@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cotizador de Zapatos</title>
+<meta name="description" content="Calcula el precio por par según costos fijos, materiales y producción.">
+<meta name="theme-color" content="#A8121E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cotizador">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #F7F5F2;
+  --surface: #FFFFFF;
+  --ink: #1E1514;
+  --muted: #6A5D5A;
+  --line: #E2DAD6;
+  --field: #FFE57A;
+  --field-line: #E0B400;
+  --focus: #A8121E;
+  --accent: #A8121E;
+  --accent-text: #A8121E;
+  --card: #A8121E;
+  --card-ink: #FFF6EE;
+  --card-muted: #F5C6BF;
+  --price: #FFD43B;
+  --stitch: rgba(255, 212, 59, 0.6);
+  --btn: #A8121E;
+  --btn-ink: #FFF6EE;
+  --danger: #A8121E;
+  --sans: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #140C0C;
+    --surface: #1F1514;
+    --ink: #F4ECE6;
+    --muted: #B5A49E;
+    --line: #3A2826;
+    --field: #3B2F0A;
+    --field-line: #B38C00;
+    --focus: #FFD43B;
+    --accent: #E0303A;
+    --accent-text: #FF7F73;
+    --card: #B3141F;
+    --card-ink: #FFF6EE;
+    --card-muted: #F4C3BC;
+    --price: #FFD43B;
+    --stitch: rgba(255, 212, 59, 0.55);
+    --btn: #FFD43B;
+    --btn-ink: #1E1514;
+    --danger: #FF7A6E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #140C0C;
+  --surface: #1F1514;
+  --ink: #F4ECE6;
+  --muted: #B5A49E;
+  --line: #3A2826;
+  --field: #3B2F0A;
+  --field-line: #B38C00;
+  --focus: #FFD43B;
+  --accent: #E0303A;
+  --accent-text: #FF7F73;
+  --card: #B3141F;
+  --card-ink: #FFF6EE;
+  --card-muted: #F4C3BC;
+  --price: #FFD43B;
+  --stitch: rgba(255, 212, 59, 0.55);
+  --btn: #FFD43B;
+  --btn-ink: #1E1514;
+  --danger: #FF7A6E;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.wrap {
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-inline: 16px;
+  padding-block: 18px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Masthead */
+.masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.theme-btn {
+  appearance: none;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.theme-btn svg { width: 20px; height: 20px; }
+.theme-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.masthead h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  font-weight: 800;
+  font-stretch: 122%;
+  letter-spacing: -0.01em;
+  color: var(--accent-text);
+  text-wrap: balance;
+}
+.masthead p { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+
+/* Result card, sticky so the price stays visible while typing */
+.result-wrap {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--bg);
+  margin-inline: -16px;
+  padding: 6px 16px 10px;
+  margin-top: -6px;
+}
+.result {
+  background: var(--card);
+  color: var(--card-ink);
+  border-radius: 18px;
+  padding: 16px 20px 16px;
+  outline: 1.5px dashed var(--stitch);
+  outline-offset: -7px;
+  box-shadow: 0 12px 24px -16px rgba(0, 0, 0, .5);
+  display: grid;
+  gap: 2px;
+}
+.result-label {
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  font-weight: 650;
+  color: var(--card-muted);
+}
+.price {
+  display: block;
+  font-size: clamp(2.6rem, 13vw, 3.5rem);
+  line-height: 1.05;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+  color: var(--price);
+  font-variant-numeric: tabular-nums;
+}
+.price .cur { font-size: .5em; vertical-align: .62em; margin-right: .14em; font-weight: 700; }
+.result-foot {
+  margin: 6px 0 0;
+  font-size: .9rem;
+  color: var(--card-muted);
+}
+.result-foot strong { color: var(--card-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Sections */
+.block { display: grid; gap: 12px; }
+.block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-stretch: 112%; }
+.legend {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .85rem;
+  color: var(--muted);
+}
+.swatch {
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  background: var(--field);
+  border: 1.5px solid var(--field-line);
+}
+
+/* Fields */
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.field { display: grid; gap: 6px; align-content: start; }
+.field.wide { grid-column: 1 / -1; }
+.field-label { font-size: .9rem; font-weight: 600; }
+.field-hint { font-size: .8rem; color: var(--muted); margin-top: -1px; }
+.box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 54px;
+  padding-inline: 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.box.hi { background: var(--field); border-color: var(--field-line); }
+.box:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 28%, transparent);
+}
+.box.invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+.box input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding-block: 12px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.unit { flex: none; color: var(--muted); font-size: .88rem; }
+.cur-in { flex: none; color: var(--muted); font-size: 1.1rem; font-weight: 600; }
+
+/* Breakdown */
+.calc {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 4px 16px;
+  font-family: var(--mono);
+  font-size: .84rem;
+}
+.calc .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-block: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+.calc .row:last-child { border-bottom: 0; }
+.calc dt { color: var(--muted); }
+.calc dd {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.calc dd small { color: var(--muted); font-size: .9em; font-weight: 400; }
+.calc .sum { border-bottom: 1.5px solid var(--accent); }
+.calc .subtotal dt, .calc .end dt { color: var(--ink); font-weight: 600; }
+.calc .subtotal dd { font-weight: 600; }
+.calc .end dd { font-weight: 600; color: var(--accent-text); }
+
+/* Fixed costs */
+.fixed { display: block; }
+.fixed summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.fixed summary::-webkit-details-marker { display: none; }
+.fixed summary h2 { grid-column: 1; grid-row: 1; }
+.sum-total {
+  grid-column: 2; grid-row: 1;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: .95rem;
+  font-variant-numeric: tabular-nums;
+}
+.sum-hint { grid-column: 1 / 3; grid-row: 2; font-size: .82rem; color: var(--muted); }
+.fixed summary::after {
+  content: "";
+  grid-column: 3; grid-row: 1 / 3;
+  width: 9px; height: 9px;
+  margin-top: -4px;
+  border-right: 2px solid var(--accent-text);
+  border-bottom: 2px solid var(--accent-text);
+  transform: rotate(45deg);
+  transition: transform .2s;
+}
+.fixed[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.fixed[open] summary { border-radius: 14px 14px 0 0; }
+.fixed summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fixed .fields {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 1px dashed var(--line);
+  border-radius: 0 0 14px 14px;
+  padding: 16px;
+  margin-top: -1px;
+}
+
+/* Footer */
+.foot { display: grid; gap: 14px; justify-items: center; text-align: center; padding-top: 2px; }
+.install {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  font-size: .9rem;
+}
+.install p { margin: 0; color: var(--muted); max-width: 32ch; }
+.btn {
+  appearance: none;
+  border: 0;
+  background: var(--btn);
+  color: var(--btn-ink);
+  font: inherit;
+  font-weight: 700;
+  padding: 11px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.btn-ghost {
+  appearance: none;
+  background: transparent;
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: .92rem;
+  font-weight: 600;
+  padding: 11px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.btn-ghost.confirm { border-color: var(--danger); color: var(--danger); }
+.btn:focus-visible, .btn-ghost:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fine { margin: 0; font-size: .8rem; color: var(--muted); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  transform: translateX(-50%);
+  z-index: 10;
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--card-ink);
+  font-size: .9rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, .55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+<script>
+  try {
+    var temaGuardado = localStorage.getItem('cotizador-zapatos:tema');
+    if (temaGuardado === 'light' || temaGuardado === 'dark') document.documentElement.setAttribute('data-theme', temaGuardado);
+  } catch (e) {}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <h1>Cotizador de zapatos</h1>
+      <p>Costo de fabricación por par</p>
+    </div>
+    <button type="button" class="theme-btn" id="theme" aria-label="Cambiar a modo oscuro">
+      <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </header>
+
+  <div class="result-wrap">
+    <section class="result" aria-label="Resultado">
+      <span class="result-label">Precio por par</span>
+      <output class="price" id="out-price" aria-live="polite"><span class="cur">$</span><span id="out-price-num">101,67</span></output>
+      <p class="result-foot"><span id="out-meta">45 pares en 2 días</span><br>Total del trabajo <strong id="out-total">$ 4.575</strong></p>
+    </section>
+  </div>
+
+  <section class="block" aria-labelledby="h-trabajo">
+    <div class="block-head">
+      <h2 id="h-trabajo">Este trabajo</h2>
+      <p class="legend"><span class="swatch" aria-hidden="true"></span>Cambia en cada pedido</p>
+    </div>
+    <div class="fields">
+      <label class="field" for="f-pares">
+        <span class="field-label">Pares</span>
+        <span class="box hi"><input id="f-pares" data-key="pares" inputmode="numeric" autocomplete="off" enterkeyhint="next"><span class="unit">pares</span></span>
+      </label>
+      <label class="field" for="f-dias">
+        <span class="field-label">Días de trabajo</span>
+        <span class="box hi"><input id="f-dias" data-key="dias" inputmode="decimal" autocomplete="off" enterkeyhint="next"><span class="unit">días</span></span>
+      </label>
+      <label class="field" for="f-materiales">
+        <span class="field-label">Materiales</span>
+        <span class="box hi"><span class="cur-in">$</span><input id="f-materiales" data-key="materiales" inputmode="decimal" autocomplete="off" enterkeyhint="next"></span>
+        <span class="field-hint">Total del trabajo</span>
+      </label>
+      <label class="field" for="f-viajes">
+        <span class="field-label">Viajes</span>
+        <span class="box hi"><span class="cur-in">$</span><input id="f-viajes" data-key="viajes" inputmode="decimal" autocomplete="off" enterkeyhint="done"></span>
+        <span class="field-hint">Total del trabajo</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="h-calc">
+    <h2 id="h-calc">Cómo se calcula</h2>
+    <dl class="calc">
+      <div class="row"><dt>Costos fijos del mes</dt><dd id="c-fijoMes">$ 50.000</dd></div>
+      <div class="row"><dt>÷ <span id="c-diasHab">25</span> días hábiles</dt><dd><span id="c-fijoDia">$ 2.000</span> <small>/día</small></dd></div>
+      <div class="row"><dt>× <span id="c-dias">2</span> días de trabajo</dt><dd id="c-fijoTrabajo">$ 4.000</dd></div>
+      <div class="row sum"><dt>+ materiales y viajes</dt><dd id="c-variable">$ 575</dd></div>
+      <div class="row subtotal"><dt>Costo del trabajo</dt><dd id="c-total">$ 4.575</dd></div>
+      <div class="row end"><dt>÷ <span id="c-pares">45</span> pares</dt><dd><span id="c-porPar">$ 101,67</span> <small>/par</small></dd></div>
+    </dl>
+  </section>
+
+  <details class="fixed" id="fijos">
+    <summary>
+      <h2>Costos fijos del mes</h2>
+      <span class="sum-total" id="sum-fijoMes">$ 50.000</span>
+      <span class="sum-hint">Cambian poco. Toca para editarlos.</span>
+    </summary>
+    <div class="fields">
+      <label class="field" for="f-alquiler">
+        <span class="field-label">Alquiler</span>
+        <span class="box"><span class="cur-in">$</span><input id="f-alquiler" data-key="alquiler" inputmode="decimal" autocomplete="off" enterkeyhint="next"></span>
+      </label>
+      <label class="field" for="f-luz">
+        <span class="field-label">Luz</span>
+        <span class="box"><span class="cur-in">$</span><input id="f-luz" data-key="luz" inputmode="decimal" autocomplete="off" enterkeyhint="next"></span>
+      </label>
+      <label class="field" for="f-agua">
+        <span class="field-label">Agua</span>
+        <span class="box"><span class="cur-in">$</span><input id="f-agua" data-key="agua" inputmode="decimal" autocomplete="off" enterkeyhint="next"></span>
+      </label>
+      <label class="field" for="f-sueldo">
+        <span class="field-label">Sueldo</span>
+        <span class="box"><span class="cur-in">$</span><input id="f-sueldo" data-key="sueldo" inputmode="decimal" autocomplete="off" enterkeyhint="next"></span>
+      </label>
+      <label class="field wide" for="f-diasHabiles">
+        <span class="field-label">Días hábiles por mes</span>
+        <span class="box"><input id="f-diasHabiles" data-key="diasHabiles" inputmode="numeric" autocomplete="off" enterkeyhint="done"><span class="unit">días</span></span>
+        <span class="field-hint">Se usan para repartir los costos fijos por día.</span>
+      </label>
+    </div>
+  </details>
+
+  <footer class="foot">
+    <div class="install" id="install" hidden>
+      <p id="install-text"></p>
+      <button type="button" class="btn" id="install-btn" hidden>Instalar app</button>
+    </div>
+    <button type="button" class="btn-ghost" id="reset">Volver a los valores originales</button>
+    <p class="fine">Los valores quedan guardados en este dispositivo.</p>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Valores originales de la planilla "Cotizador Zapatos.xlsx"
+  var DEFAULTS = {
+    pares: 45, dias: 2, materiales: 75, viajes: 500,
+    alquiler: 6000, luz: 3000, agua: 1000, sueldo: 40000, diasHabiles: 25
+  };
+  var KEY = 'cotizador-zapatos:v1';
+  var KEY_OPEN = 'cotizador-zapatos:fijos-abierto';
+  var KEY_THEME = 'cotizador-zapatos:tema';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var inputs = Array.prototype.slice.call(document.querySelectorAll('input[data-key]'));
+  var inFrame = window.self !== window.top;
+
+  var nf0 = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+  var nf2 = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var nfIn = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 });
+
+  function num(n) {
+    return Math.abs(n - Math.round(n)) < 0.005 ? nf0.format(Math.round(n)) : nf2.format(n);
+  }
+  function money(n) { return '$ ' + num(n); }
+  function plural(n, one, many) { return n === 1 ? one : many; }
+
+  function load() {
+    var s = Object.assign({}, DEFAULTS);
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY));
+      if (saved && typeof saved === 'object') {
+        Object.keys(DEFAULTS).forEach(function (k) {
+          if (typeof saved[k] === 'number' && isFinite(saved[k])) s[k] = saved[k];
+        });
+      }
+    } catch (e) {}
+    return s;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  // Acepta "1.500", "1500", "0,25" y "0.25"
+  function parse(text) {
+    var t = String(text).trim().replace(/[\s$]/g, '');
+    if (t === '') return 0;
+    if (t.indexOf(',') !== -1) t = t.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+    var n = Number(t);
+    return isFinite(n) && n >= 0 ? n : NaN;
+  }
+
+  var state = load();
+
+  function compute(s) {
+    var fijoMes = s.alquiler + s.luz + s.agua + s.sueldo;
+    var fijoDia = s.diasHabiles > 0 ? fijoMes / s.diasHabiles : NaN;
+    var fijoTrabajo = fijoDia * s.dias;
+    var variable = s.materiales + s.viajes;
+    var total = fijoTrabajo + variable;
+    var porPar = s.pares > 0 ? total / s.pares : NaN;
+    return { fijoMes: fijoMes, fijoDia: fijoDia, fijoTrabajo: fijoTrabajo, variable: variable, total: total, porPar: porPar };
+  }
+
+  function show(id, n) { $(id).textContent = isFinite(n) ? money(n) : '—'; }
+
+  function render() {
+    var s = state;
+    var r = compute(s);
+
+    $('out-price-num').textContent = isFinite(r.porPar) ? num(r.porPar) : '—';
+    if (!(s.diasHabiles > 0)) {
+      $('out-meta').textContent = 'Revisa los días hábiles por mes';
+    } else if (!(s.pares > 0)) {
+      $('out-meta').textContent = 'Indica cuántos pares son';
+    } else {
+      $('out-meta').textContent = num(s.pares) + ' ' + plural(s.pares, 'par', 'pares') +
+        ' en ' + num(s.dias) + ' ' + plural(s.dias, 'día', 'días');
+    }
+    show('out-total', r.total);
+
+    show('c-fijoMes', r.fijoMes);
+    $('c-diasHab').textContent = num(s.diasHabiles);
+    show('c-fijoDia', r.fijoDia);
+    $('c-dias').textContent = num(s.dias);
+    show('c-fijoTrabajo', r.fijoTrabajo);
+    show('c-variable', r.variable);
+    show('c-total', r.total);
+    $('c-pares').textContent = num(s.pares);
+    show('c-porPar', r.porPar);
+    show('sum-fijoMes', r.fijoMes);
+  }
+
+  function fillInputs() {
+    inputs.forEach(function (el) {
+      el.value = nfIn.format(state[el.dataset.key]);
+      el.parentNode.classList.remove('invalid');
+    });
+  }
+
+  inputs.forEach(function (el, i) {
+    el.addEventListener('input', function () {
+      var v = parse(el.value);
+      var bad = isNaN(v);
+      el.parentNode.classList.toggle('invalid', bad);
+      if (bad) return;
+      state[el.dataset.key] = v;
+      save();
+      render();
+    });
+    el.addEventListener('focus', function () {
+      setTimeout(function () { try { el.select(); } catch (e) {} }, 0);
+    });
+    el.addEventListener('blur', function () {
+      el.value = nfIn.format(state[el.dataset.key]);
+      el.parentNode.classList.remove('invalid');
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var next = inputs[i + 1];
+      if (next && next.offsetParent !== null) next.focus(); else el.blur();
+    });
+  });
+
+  // Costos fijos: recordar si quedó abierto
+  var fijos = $('fijos');
+  try { if (localStorage.getItem(KEY_OPEN) === '1') fijos.open = true; } catch (e) {}
+  fijos.addEventListener('toggle', function () {
+    try { localStorage.setItem(KEY_OPEN, fijos.open ? '1' : '0'); } catch (e) {}
+  });
+
+  // Aviso breve
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+
+  // Modo claro / oscuro (si no se elige, sigue al teléfono)
+  var root = document.documentElement;
+  var darkQuery = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+  function currentTheme() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'light' || t === 'dark') return t;
+    return darkQuery && darkQuery.matches ? 'dark' : 'light';
+  }
+  function paintThemeButton() {
+    var dark = currentTheme() === 'dark';
+    $('icon-moon').toggleAttribute('hidden', dark);
+    $('icon-sun').toggleAttribute('hidden', !dark);
+    $('theme').setAttribute('aria-label', dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+  }
+  $('theme').addEventListener('click', function () {
+    var next = currentTheme() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem(KEY_THEME, next); } catch (e) {}
+    paintThemeButton();
+  });
+  if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener('change', paintThemeButton);
+  paintThemeButton();
+
+  // Restaurar con doble toque (sin diálogos del navegador)
+  var resetBtn = $('reset');
+  var resetTimer;
+  resetBtn.addEventListener('click', function () {
+    if (!resetBtn.classList.contains('confirm')) {
+      resetBtn.classList.add('confirm');
+      resetBtn.textContent = 'Toca de nuevo para confirmar';
+      resetTimer = setTimeout(disarm, 3500);
+      return;
+    }
+    disarm();
+    state = Object.assign({}, DEFAULTS);
+    save();
+    fillInputs();
+    render();
+    toast('Valores originales restaurados');
+  });
+  function disarm() {
+    clearTimeout(resetTimer);
+    resetBtn.classList.remove('confirm');
+    resetBtn.textContent = 'Volver a los valores originales';
+  }
+
+  // Instalar en el teléfono
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  if (!standalone && !inFrame) {
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    $('install-text').textContent = ios
+      ? 'Para tenerlo como app: en Safari toca Compartir y elige “Agregar a inicio”.'
+      : 'Para tenerlo como app: abre el menú ⋮ del navegador y elige “Instalar app” o “Agregar a la pantalla de inicio”.';
+    $('install').hidden = false;
+  }
+  var deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    $('install-btn').hidden = false;
+  });
+  $('install-btn').addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function () {
+      deferredPrompt = null;
+      $('install-btn').hidden = true;
+    });
+  });
+  window.addEventListener('appinstalled', function () { $('install').hidden = true; });
+
+  // Funciona sin internet una vez abierto
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !inFrame) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+
+  fillInputs();
+  render();
+})();
+</script>
+</body>
+</html>
