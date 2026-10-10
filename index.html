@@ -358,20 +358,9 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
   border-radius: 999px;
   cursor: pointer;
 }
-.btn-ghost {
-  appearance: none;
-  background: transparent;
-  border: 1.5px solid var(--line);
-  color: var(--ink);
-  font: inherit;
-  font-size: .92rem;
-  font-weight: 600;
-  padding: 11px 18px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.btn-ghost.confirm { border-color: var(--danger); color: var(--danger); }
-.btn:focus-visible, .btn-ghost:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.base { display: grid; gap: 8px; justify-items: center; }
 .fine { margin: 0; font-size: .8rem; color: var(--muted); }
 
 .toast {
@@ -498,8 +487,10 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
       <p id="install-text"></p>
       <button type="button" class="btn" id="install-btn" hidden>Instalar app</button>
     </div>
-    <button type="button" class="btn-ghost" id="reset">Volver a los valores originales</button>
-    <p class="fine">Los valores quedan guardados en este dispositivo.</p>
+    <div class="base">
+      <button type="button" class="btn" id="save-base">Guardar como valores base</button>
+      <p class="fine" id="base-info">Son valores de ejemplo. Cámbialos y guárdalos como base.</p>
+    </div>
   </footer>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -508,12 +499,13 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
 (function () {
   'use strict';
 
-  // Valores originales de la planilla "Cotizador Zapatos.xlsx"
+  // Valores de ejemplo para la primera vez que se abre la app
   var DEFAULTS = {
     pares: 45, dias: 2, materiales: 75, viajes: 500,
     alquiler: 6000, luz: 3000, agua: 1000, sueldo: 40000, diasHabiles: 25
   };
-  var KEY = 'cotizador-zapatos:v1';
+  var KEY_BASE = 'cotizador-zapatos:base';
+  var KEY_OLD = 'cotizador-zapatos:v1'; // la versión anterior guardaba cada cambio aquí
   var KEY_OPEN = 'cotizador-zapatos:fijos-abierto';
   var KEY_THEME = 'cotizador-zapatos:tema';
 
@@ -531,20 +523,31 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
   function money(n) { return '$ ' + num(n); }
   function plural(n, one, many) { return n === 1 ? one : many; }
 
-  function load() {
+  // Toma solo números válidos; lo que falte sale de los valores de ejemplo
+  function readValues(raw) {
     var s = Object.assign({}, DEFAULTS);
-    try {
-      var saved = JSON.parse(localStorage.getItem(KEY));
-      if (saved && typeof saved === 'object') {
-        Object.keys(DEFAULTS).forEach(function (k) {
-          if (typeof saved[k] === 'number' && isFinite(saved[k])) s[k] = saved[k];
-        });
-      }
-    } catch (e) {}
+    if (raw && typeof raw === 'object') {
+      Object.keys(DEFAULTS).forEach(function (k) {
+        if (typeof raw[k] === 'number' && isFinite(raw[k])) s[k] = raw[k];
+      });
+    }
     return s;
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+
+  // La app siempre se abre con los valores base guardados
+  function loadBase() {
+    try {
+      var b = JSON.parse(localStorage.getItem(KEY_BASE));
+      if (b && b.values) return { values: readValues(b.values), savedAt: b.savedAt || null };
+      var old = JSON.parse(localStorage.getItem(KEY_OLD));
+      if (old && typeof old === 'object') {
+        var migrated = { values: readValues(old), savedAt: new Date().toISOString() };
+        localStorage.setItem(KEY_BASE, JSON.stringify(migrated));
+        localStorage.removeItem(KEY_OLD);
+        return migrated;
+      }
+    } catch (e) {}
+    return { values: Object.assign({}, DEFAULTS), savedAt: null };
   }
 
   // Acepta "1.500", "1500", "0,25" y "0.25"
@@ -557,7 +560,8 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
     return isFinite(n) && n >= 0 ? n : NaN;
   }
 
-  var state = load();
+  var base = loadBase();
+  var state = Object.assign({}, base.values);
 
   function compute(s) {
     var fijoMes = s.alquiler + s.luz + s.agua + s.sueldo;
@@ -596,6 +600,7 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
     $('c-pares').textContent = num(s.pares);
     show('c-porPar', r.porPar);
     show('sum-fijoMes', r.fijoMes);
+    paintBase();
   }
 
   function fillInputs() {
@@ -612,7 +617,6 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
       el.parentNode.classList.toggle('invalid', bad);
       if (bad) return;
       state[el.dataset.key] = v;
-      save();
       render();
     });
     el.addEventListener('focus', function () {
@@ -670,28 +674,28 @@ h2 { margin: 0; font-size: 1.08rem; line-height: 1.2; font-weight: 750; font-str
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener('change', paintThemeButton);
   paintThemeButton();
 
-  // Restaurar con doble toque (sin diálogos del navegador)
-  var resetBtn = $('reset');
-  var resetTimer;
-  resetBtn.addEventListener('click', function () {
-    if (!resetBtn.classList.contains('confirm')) {
-      resetBtn.classList.add('confirm');
-      resetBtn.textContent = 'Toca de nuevo para confirmar';
-      resetTimer = setTimeout(disarm, 3500);
-      return;
-    }
-    disarm();
-    state = Object.assign({}, DEFAULTS);
-    save();
-    fillInputs();
-    render();
-    toast('Valores originales restaurados');
-  });
-  function disarm() {
-    clearTimeout(resetTimer);
-    resetBtn.classList.remove('confirm');
-    resetBtn.textContent = 'Volver a los valores originales';
+  // Guardar los valores actuales como base (con ellos se abre la app)
+  function sameAsBase() {
+    return Object.keys(DEFAULTS).every(function (k) { return state[k] === base.values[k]; });
   }
+  function paintBase() {
+    var same = sameAsBase();
+    var d = base.savedAt ? new Date(base.savedAt) : null;
+    $('save-base').disabled = same;
+    if (!same) {
+      $('base-info').textContent = 'Hay cambios sin guardar. Si cierras la app, se abrirá con los valores base.';
+    } else if (d && !isNaN(d)) {
+      $('base-info').textContent = 'La app se abre con estos valores. Guardados el ' + d.toLocaleDateString('es-AR') + '.';
+    } else {
+      $('base-info').textContent = 'Son valores de ejemplo. Cámbialos y guárdalos como base.';
+    }
+  }
+  $('save-base').addEventListener('click', function () {
+    base = { values: Object.assign({}, state), savedAt: new Date().toISOString() };
+    try { localStorage.setItem(KEY_BASE, JSON.stringify(base)); } catch (e) {}
+    paintBase();
+    toast('Listo. La app se abrirá con estos valores.');
+  });
 
   // Instalar en el teléfono
   var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;

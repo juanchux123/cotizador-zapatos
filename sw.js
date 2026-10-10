@@ -1,6 +1,6 @@
 // Guarda la app en el teléfono para que funcione sin internet.
 // Si cambias index.html, sube el número de versión para forzar la actualización.
-const CACHE = 'cotizador-zapatos-v3';
+const CACHE = 'cotizador-zapatos-v4';
 const ASSETS = [
   './',
   './index.html',
